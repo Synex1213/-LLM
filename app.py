@@ -461,7 +461,7 @@ def make_app():
         pdf_btn.click(auto_download_pdfs_ui,inputs=[primary_state],outputs=[pdf_summary,pdf_status,pdf_status_file],concurrency_limit=1)
         pdf_stop_btn.click(stop_pdf_ui,outputs=[login_message],queue=False)
 
-        gr.HTML(f"<div class='statusbar'>采集包：cnki-metadata-exporter {PACKAGE_VERSION} · commit {PINNED_COMMIT[:8]}…｜KNS8：LY + 页面发表时间｜并发上限3｜登录/验证码由用户完成，不绕过访问控制｜Author: Synex1213。</div>")
+        gr.HTML(f"<div class='statusbar'>采集包：cnki-metadata-exporter {PACKAGE_VERSION} · commit {PINNED_COMMIT[:8]}…｜KNS8：LY + 页面发表时间｜并发上限3｜登录/验证码由用户完成，不绕过访问控制｜Author: Synex1213｜v1.0。</div>")
         demo.load(status_html,outputs=[plugin_state])
     return demo
 
