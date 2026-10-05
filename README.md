@@ -3,6 +3,8 @@
 **法学论文抽样与自动编号助手 · v1.0**  
 Author: **Synex1213**
 
+[![CI](https://github.com/Synex1213/sample-llm/actions/workflows/ci.yml/badge.svg)](https://github.com/Synex1213/sample-llm/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 一个面向法学论文 Benchmark / LLM 学术评价研究的数据采样工具。它把“研究范围设计、CNKI 候选题录采集、论文类型筛选、候选池冻结、可复现抽样、自动编号、PDF/链接交付”连接成一条可审计、可复现的工作流。
 
 > 本项目用于科研数据构建与抽样管理。它不会绕过登录、验证码、机构访问权限、付费或其他访问控制，也不隶属于 CNKI。
