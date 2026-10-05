@@ -228,25 +228,25 @@ def install_package():
     yield {"message": "正在安装固定 GitHub 源码版本的 CNKI Metadata Exporter…", "log": ""}
     for line, lines in _stream(cmd):
         log.append(line)
-        yield {"message": line or "安装中…", "log": "\\n".join(log[-120:])}
+        yield {"message": line or "安装中…", "log": "\n".join(log[-120:])}
     importlib.invalidate_caches()
     st = package_status()
     if not st["installed"]:
         raise RuntimeError("安装完成，但没有检测到 cnki-metadata-exporter 0.2.0。")
     if not st["browser_ready"]:
         bcmd = [sys.executable, "-m", "playwright", "install", "chromium"]
-        yield {"message": "未检测到 Edge/Chrome，尝试安装 Playwright Chromium…", "log": "\\n".join(log[-120:])}
+        yield {"message": "未检测到 Edge/Chrome，尝试安装 Playwright Chromium…", "log": "\n".join(log[-120:])}
         try:
             for line, lines in _stream(bcmd):
                 log.append(line)
-                yield {"message": line or "浏览器安装中…", "log": "\\n".join(log[-120:])}
+                yield {"message": line or "浏览器安装中…", "log": "\n".join(log[-120:])}
         except Exception as exc:
             log.append(str(exc))
-            yield {"message": "CNKI 包已安装，但浏览器自动安装失败。", "log": "\\n".join(log[-120:])}
+            yield {"message": "CNKI 包已安装，但浏览器自动安装失败。", "log": "\n".join(log[-120:])}
     st = package_status()
     yield {
         "message": f"CNKI Metadata Exporter 已安装：{st['version']} · 浏览器：{st.get('browser_channel') or '待配置'}",
-        "log": "\\n".join(log[-120:]),
+        "log": "\n".join(log[-120:]),
     }
 
 
@@ -447,7 +447,7 @@ def collect(frame, workspace: Path, batch_size=500, concurrency=2, year_chunk_si
                 yield {
                     "stage": 1, "total": 2,
                     "message": f"并发采集中：{name} · {payload}",
-                    "log": "\\n".join(merged_lines[-120:]),
+                    "log": "\n".join(merged_lines[-120:]),
                     "workspace": str(workspace), "unique_json": "", "stopped": False,
                 }
             elif kind == "done":
@@ -455,7 +455,7 @@ def collect(frame, workspace: Path, batch_size=500, concurrency=2, year_chunk_si
                 yield {
                     "stage": 1, "total": 2,
                     "message": f"{name} 已结束（code={payload}），等待其余窗口…",
-                    "log": "\\n".join([f"[{w}] {histories[w][-1] if histories[w] else 'no log'}" for w in sorted(histories)]),
+                    "log": "\n".join([f"[{w}] {histories[w][-1] if histories[w] else 'no log'}" for w in sorted(histories)]),
                     "workspace": str(workspace), "unique_json": "", "stopped": False,
                 }
             elif kind == "error":
@@ -464,8 +464,8 @@ def collect(frame, workspace: Path, batch_size=500, concurrency=2, year_chunk_si
 
         bad = {w: c for w, c in done.items() if c != 0}
         if bad:
-            detail = "\\n".join(f"{w}: code={c}; tail={histories[w][-1] if histories[w] else ''}" for w, c in bad.items())
-            raise RuntimeError("部分并发采集窗口失败：\\n" + detail)
+            detail = "\n".join(f"{w}: code={c}; tail={histories[w][-1] if histories[w] else ''}" for w, c in bad.items())
+            raise RuntimeError("部分并发采集窗口失败：\n" + detail)
 
         _consolidate_worker_outputs(workspace, worker_roots)
         merge_cmd = [
@@ -477,11 +477,11 @@ def collect(frame, workspace: Path, batch_size=500, concurrency=2, year_chunk_si
         yield {"stage": 2, "total": 2, "message": "并发采集完成，正在合并、核验并去重…", "log": "", "workspace": str(workspace), "unique_json": "", "stopped": False}
         for line, lines in _stream(merge_cmd, cwd=workspace):
             log.append(line)
-            yield {"stage": 2, "total": 2, "message": line or "合并中…", "log": "\\n".join(log[-120:]), "workspace": str(workspace), "unique_json": "", "stopped": False}
+            yield {"stage": 2, "total": 2, "message": line or "合并中…", "log": "\n".join(log[-120:]), "workspace": str(workspace), "unique_json": "", "stopped": False}
         unique = workspace / "merged" / "unique.json"
         if not unique.exists():
             raise RuntimeError("采集完成但未找到 merged/unique.json")
-        yield {"stage": 2, "total": 2, "message": "CNKI 候选库已完成", "log": "\\n".join(log[-120:]), "workspace": str(workspace), "unique_json": str(unique), "stopped": False}
+        yield {"stage": 2, "total": 2, "message": "CNKI 候选库已完成", "log": "\n".join(log[-120:]), "workspace": str(workspace), "unique_json": str(unique), "stopped": False}
     except CollectionStopped:
         yield {"stage": 0, "total": 2, "message": "采集已由用户结束；已完成批次已保留，可再次开始续接。", "log": "", "workspace": str(workspace), "unique_json": "", "stopped": True}
     finally:
