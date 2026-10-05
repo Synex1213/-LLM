@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.py[cod]
+.DS_Store
+Thumbs.db
+runtime_outputs/*
+!runtime_outputs/.gitkeep
+*.pdf
+.env
+.env.*
+.cnki-profile/
+cnki_master_profile/
+selected_pdfs/
