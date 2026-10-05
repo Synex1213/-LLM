@@ -1,8 +1,0 @@
-{
-  "name": "sample-llm",
-  "display_name": "法学论文抽样与自动编号助手",
-  "version": "1.0",
-  "author": "Synex1213",
-  "repository": "https://github.com/Synex1213/sample-llm",
-  "status": "stable"
-}
