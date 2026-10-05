@@ -19,6 +19,8 @@ for key in ("NO_PROXY", "no_proxy"):
 from sampling_core import (
     load_registry, build_frame, attach_frame, read_candidates,
     load_rules, classify, sample, make_bundle,
+    METHOD_HASH_ISSUE_BALANCED, METHOD_HASH_SIMPLE,
+    METHOD_LABELS, METHOD_DESCRIPTIONS, PROTOCOL_VERSION,
 )
 from integrations.cnki_external import (
     package_status, install_package, collect, request_stop,
@@ -33,15 +35,45 @@ OUT = ROOT / "runtime_outputs"
 OUT.mkdir(exist_ok=True)
 TIERS = ["T1", "T2", "T3", "T4", "T5"]
 
+
+METHOD_CHOICE_TO_ID = {
+    METHOD_LABELS[METHOD_HASH_ISSUE_BALANCED]: METHOD_HASH_ISSUE_BALANCED,
+    METHOD_LABELS[METHOD_HASH_SIMPLE]: METHOD_HASH_SIMPLE,
+}
+
+
+def sampling_method_help(choice):
+    method = METHOD_CHOICE_TO_ID.get(choice, METHOD_HASH_ISSUE_BALANCED)
+    desc = METHOD_DESCRIPTIONS[method]
+    return (
+        "<div class='note'><b>抽样依据：</b>" + html.escape(desc) +
+        "<br><b>复现要求：</b>候选池、抽样框、方法和 seed 均不变。抽样完成后会生成 "
+        "<code>sampling_protocol.json</code>、<code>sampling_certificate.csv</code> 和完整排序表。</div>"
+    )
+
+
+def sampling_protocol_html(protocol):
+    if not protocol:
+        return "<div class='note'>完成抽样后，这里会显示本次抽样方法、seed、输入指纹和运行指纹。</div>"
+    return (
+        "<div class='pluginbox'><b>本次抽样凭证</b><br>"
+        f"方法：{html.escape(str(protocol.get('method_label','')))}<br>"
+        f"seed：<code>{html.escape(str(protocol.get('seed','')))}</code><br>"
+        f"协议版本：<code>{html.escape(str(protocol.get('protocol_version','')))}</code><br>"
+        f"Sampling frame SHA256：<code>{html.escape(str(protocol.get('sampling_frame_sha256','')))}</code><br>"
+        f"Candidate registry SHA256：<code>{html.escape(str(protocol.get('candidate_registry_sha256','')))}</code><br>"
+        f"Run fingerprint：<code>{html.escape(str(protocol.get('run_fingerprint','')))}</code></div>"
+    )
+
 CSS = """
 :root{--ink:#181d26;--muted:#6b7280;--soft:#f7f8fa;--line:#e6e8ec;--accent:#5e6ad2;}
 body{background:#f3f4f6!important}.gradio-container{max-width:1240px!important;margin:0 auto!important;padding:26px!important;background:white!important;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif!important;color:var(--ink)!important}
-footer{display:none!important}.hero{padding:4px 0 20px;border-bottom:1px solid var(--line);margin-bottom:20px}.hero h1{font-size:32px!important;margin:0 0 6px!important}.hero p{margin:0!important;color:var(--muted)!important;font-size:15px!important}.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}.step{padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--soft);font-size:13px;color:#424955}.step b{display:block;font-size:14px;color:var(--ink);margin-bottom:3px}.n{display:inline-flex;width:22px;height:22px;border-radius:99px;align-items:center;justify-content:center;background:#eceeff;color:var(--accent);font-weight:700;margin-right:6px}.sec{margin:26px 0 12px}.sec h2{font-size:23px!important;margin:0 0 4px!important}.sec p{margin:0!important;color:var(--muted)!important;font-size:14px!important}.card{border:1px solid var(--line)!important;border-radius:12px!important;padding:17px!important;background:white!important}.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:10px 0}.kpi{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:white}.kpi .v{font-size:24px;font-weight:650}.kpi .l{font-size:12px;color:var(--muted);margin-top:4px}.note{font-size:12px;color:var(--muted);padding:9px 11px;border:1px solid var(--line);background:var(--soft);border-radius:8px;margin:8px 0}.status-good{color:#157347;font-weight:650}.status-bad{color:#b42318;font-weight:650}.status-warn{color:#9a5b00;font-weight:650}.pluginbox{padding:13px 14px;border:1px solid var(--line);background:#fbfbfc;border-radius:10px}.gradio-container table{font-size:13px!important}.gradio-container th{background:#f8f9fb!important;font-weight:650!important}button.primary{background:#181d26!important;color:white!important;border-color:#181d26!important;min-height:44px!important;border-radius:9px!important;font-weight:650!important}button.secondary{background:white!important;color:#181d26!important;border:1px solid #d7dbe2!important;border-radius:9px!important;min-height:42px!important}button.stop{background:#fff5f4!important;color:#b42318!important;border:1px solid #f3c2bd!important;border-radius:9px!important;min-height:42px!important;font-weight:650!important}button.stop:hover{background:#feeceb!important}.logbox textarea{font-family:ui-monospace,SFMono-Regular,Consolas,monospace!important;font-size:12px!important}.statusbar{border-top:1px solid var(--line);margin-top:30px;padding-top:14px;color:var(--muted);font-size:12px}.linklist{max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:8px 14px;background:#fff}.linkrow{padding:9px 2px;border-bottom:1px solid #f0f1f3;font-size:13px}.linkrow:last-child{border-bottom:0}.linkrow a{color:#4f5ac7;text-decoration:none;font-weight:600}.linkrow a:hover{text-decoration:underline}@media(max-width:900px){.steps,.kpis{grid-template-columns:1fr 1fr}.gradio-container{padding:14px!important}}
+footer{display:none!important}.hero{padding:4px 0 20px;border-bottom:1px solid var(--line);margin-bottom:20px}.hero h1{font-size:32px!important;margin:0 0 6px!important}.hero p{margin:0!important;color:var(--muted)!important;font-size:15px!important}.sec{margin:26px 0 12px}.sec h2{font-size:23px!important;margin:0 0 4px!important}.sec p{margin:0!important;color:var(--muted)!important;font-size:14px!important}.card{border:1px solid var(--line)!important;border-radius:12px!important;padding:17px!important;background:white!important}.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:10px 0}.kpi{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:white}.kpi .v{font-size:24px;font-weight:650}.kpi .l{font-size:12px;color:var(--muted);margin-top:4px}.note{font-size:12px;color:var(--muted);padding:9px 11px;border:1px solid var(--line);background:var(--soft);border-radius:8px;margin:8px 0}.status-good{color:#157347;font-weight:650}.status-bad{color:#b42318;font-weight:650}.status-warn{color:#9a5b00;font-weight:650}.pluginbox{padding:13px 14px;border:1px solid var(--line);background:#fbfbfc;border-radius:10px}.gradio-container table{font-size:13px!important}.gradio-container th{background:#f8f9fb!important;font-weight:650!important}button.primary{background:#181d26!important;color:white!important;border-color:#181d26!important;min-height:44px!important;border-radius:9px!important;font-weight:650!important}button.secondary{background:white!important;color:#181d26!important;border:1px solid #d7dbe2!important;border-radius:9px!important;min-height:42px!important}button.stop{background:#fff5f4!important;color:#b42318!important;border:1px solid #f3c2bd!important;border-radius:9px!important;min-height:42px!important;font-weight:650!important}button.stop:hover{background:#feeceb!important}.logbox textarea{font-family:ui-monospace,SFMono-Regular,Consolas,monospace!important;font-size:12px!important}.statusbar{border-top:1px solid var(--line);margin-top:30px;padding-top:14px;color:var(--muted);font-size:12px}.linklist{max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:8px 14px;background:#fff}.linkrow{padding:9px 2px;border-bottom:1px solid #f0f1f3;font-size:13px}.linkrow:last-child{border-bottom:0}.linkrow a{color:#4f5ac7;text-decoration:none;font-weight:600}.linkrow a:hover{text-decoration:underline}@media(max-width:900px){.kpis{grid-template-columns:1fr 1fr}.gradio-container{padding:14px!important}}
 """
 
 
 def header():
-    return """<div class='hero'><h1>法学论文抽样与自动编号助手</h1><p>范围设计 → 登录 → 并发采集 → 边界复核 → 确定性抽样 → PDF/链接交付。</p><div class='steps'><div class='step'><span class='n'>1</span><b>设计范围</b>时期 · Tier · 期刊</div><div class='step'><span class='n'>2</span><b>登录并采集</b>低并发多窗口批量题录</div><div class='step'><span class='n'>3</span><b>边界复核</b>点击选择，不手输 include/exclude</div><div class='step'><span class='n'>4</span><b>冻结抽样</b>编号 · PDF · 网页链接</div></div></div>"""
+    return """<div class='hero'><h1>法学论文抽样与自动编号助手</h1><p>从 CNKI 候选题录采集、Eligibility 复核到可复现抽样、编号和下载交付。</p></div>"""
 
 
 def _all_periods(p1s, p1e, p2s, p2e, p3s, p3e):
@@ -219,21 +251,76 @@ def link_html(primary):
     return "<div class='linklist'>"+"".join(rows)+"</div>"
 
 
-def run_sample(frame,registry,seed,width):
-    if registry is None or len(registry)==0: raise gr.Error("请先采集/导入候选论文")
-    reg=registry.copy()
-    unresolved=reg[(reg["eligibility_status"]=="UNCERTAIN") & (~reg["decision"].isin(["include","exclude"]))]
-    if len(unresolved): raise gr.Error(f"还有 {len(unresolved)} 篇边界论文没有确认，请先在上方勾选并应用。")
-    primary,reserve,issues=sample(reg,frame,seed=str(seed or "law_sampling_v1"),width=int(width))
-    zpath=OUT/"sampling_result_bundle.zip"; download,evidence,z=make_bundle(frame,reg,primary,reserve,issues,zpath)
-    selcols=["paper_id","sample_role","tier","period","journal","year","issue","title"]
-    sel=primary[selcols].rename(columns={"paper_id":"编号","sample_role":"角色","tier":"Tier","period":"时期","journal":"期刊","year":"年份","issue":"期号","title":"题名"}) if not primary.empty else pd.DataFrame(columns=["编号"])
-    dcols=["paper_id","role","tier","period","journal","year","issue","title","cnki_url","download_status"]
-    dl=download[dcols].rename(columns={"paper_id":"编号","role":"角色","tier":"Tier","period":"时期","journal":"期刊","year":"年份","issue":"期号","title":"题名","cnki_url":"CNKI链接","download_status":"状态"}) if not download.empty else download
-    ev=evidence[["task_id","type","required","status","page","screenshot_name","what_to_capture"]].rename(columns={"task_id":"任务","type":"证据类型","required":"必须人工","status":"状态","page":"打开页面","screenshot_name":"截图文件名","what_to_capture":"截图要求"}) if not evidence.empty else evidence
-    iss=issues.rename(columns={"stratum_id":"抽样格","role":"角色","requested":"目标","selected":"实际","issue":"问题"}) if not issues.empty else issues
-    summary=f"<div class='kpis'><div class='kpi'><div class='v'>{len(primary[primary.sample_role=='MAIN'])}</div><div class='l'>MAIN</div></div><div class='kpi'><div class='v'>{len(primary[primary.sample_role=='HOLDOUT'])}</div><div class='l'>HOLDOUT</div></div><div class='kpi'><div class='v'>{len(reserve)}</div><div class='l'>RESERVE</div></div><div class='kpi'><div class='v'>{len(download)}</div><div class='l'>下载任务</div></div><div class='kpi'><div class='v'>{len(ev)}</div><div class='l'>证据任务</div></div></div><div class='note'>PDF仍保留原文件名；paper_id 通过结果表绑定，不要求改 PDF 文件名。</div>"
-    return primary,summary,sel,dl,link_html(primary),ev,iss,z
+def run_sample(frame, registry, method_choice, seed, width):
+    if registry is None or len(registry) == 0:
+        raise gr.Error("请先完成第2步")
+    reg = registry.copy()
+    unresolved = reg[(reg["eligibility_status"] == "UNCERTAIN") & (~reg["decision"].isin(["include","exclude"]))]
+    if len(unresolved):
+        raise gr.Error(f"还有 {len(unresolved)} 条边界论文未确认。请在第2步用勾选方式处理。")
+
+    method = METHOD_CHOICE_TO_ID.get(method_choice, METHOD_HASH_ISSUE_BALANCED)
+    seed_value = str(seed or "law_sampling_v1").strip() or "law_sampling_v1"
+    primary, reserve, issues, audit = sample(
+        reg, frame, seed=seed_value, method=method, width=int(width)
+    )
+    protocol = {
+        "protocol_version": PROTOCOL_VERSION,
+        "method": method,
+        "method_label": METHOD_LABELS[method],
+        "description": METHOD_DESCRIPTIONS[method],
+        "seed": seed_value,
+        "reserve_seed": seed_value + "|reserve",
+        "hash_formula": "SHA256(seed | stratum_id | candidate_key)",
+    }
+    zpath = OUT / "sampling_result_bundle.zip"
+    (
+        download, evidence, z, protocol_file, certificate_file, ranking_file,
+        protocol_final, certificate
+    ) = make_bundle(
+        frame, reg, primary, reserve, issues, zpath, audit=audit, protocol=protocol
+    )
+
+    main = primary[primary["sample_role"] == "MAIN"] if not primary.empty else pd.DataFrame()
+    hold = primary[primary["sample_role"] == "HOLDOUT"] if not primary.empty else pd.DataFrame()
+    short_fp = str(protocol_final.get("run_fingerprint", ""))[:16]
+    summary = "<div class='kpis'>" + "".join([
+        f"<div class='kpi'><div class='v'>{v}</div><div class='l'>{l}</div></div>"
+        for v,l in [
+            (len(main),"MAIN"),(len(hold),"HOLDOUT"),(len(reserve),"RESERVE"),
+            (len(download),"待获取PDF"),(len(evidence[evidence.required==1]) if not evidence.empty else 0,"需人工留证")
+        ]
+    ]) + (
+        "</div><div class='note'><b>抽样方法：</b>" + html.escape(METHOD_LABELS[method]) +
+        "　<b>seed：</b><code>" + html.escape(seed_value) + "</code>" +
+        "　<b>运行指纹：</b><code>" + html.escape(short_fp) + "…</code><br>" +
+        "结果包中已保存抽样协议、逐样本凭证和完整排序，可据此复算。" +
+        " PDF自动下载失败不会改变样本，CNKI网页链接始终保留。</div>"
+    )
+
+    selected = primary[["paper_id","sample_role","tier","period","journal","year","issue","title"]].rename(
+        columns={"paper_id":"编号","sample_role":"角色","tier":"Tier","period":"时期","journal":"期刊","year":"年份","issue":"期号","title":"题名"}
+    ) if not primary.empty else pd.DataFrame()
+    if not download.empty:
+        d = download[["paper_id","role","tier","period","journal","year","issue","title","cnki_url","download_status"]].rename(
+            columns={"paper_id":"编号","role":"角色","tier":"Tier","period":"时期","journal":"期刊","year":"年份","issue":"期号","title":"题名","cnki_url":"CNKI链接","download_status":"状态"}
+        )
+    else:
+        d = download
+    e = evidence[["task_id","type","required","status","page","screenshot_name","what_to_capture"]].rename(
+        columns={"task_id":"任务","type":"证据类型","required":"必须人工","status":"状态","page":"打开页面","screenshot_name":"截图文件名","what_to_capture":"截图要求"}
+    ) if not evidence.empty else evidence
+    cert_view = certificate.rename(columns={
+        "paper_id":"编号","sample_role":"角色","stratum_id":"抽样格","journal":"期刊",
+        "year":"年份","issue":"期号","title":"题名","draw_hash":"抽样哈希",
+        "draw_rank":"格内顺位","stratum_pool_size":"候选池大小","sampling_method":"方法",
+        "sampling_seed":"seed","run_fingerprint":"运行指纹"
+    }) if not certificate.empty else certificate
+
+    return (
+        primary, summary, selected, d, _links_html(primary), e, issues, z,
+        sampling_protocol_html(protocol_final), cert_view, protocol_file, certificate_file, ranking_file
+    )
 
 
 def auto_download_pdfs_ui(primary):
@@ -258,7 +345,7 @@ def stop_pdf_ui():
 
 
 def make_app():
-    with gr.Blocks(title="法学论文抽样与自动编号助手 v0.4.6") as demo:
+    with gr.Blocks(title="法学论文抽样与自动编号助手 v1.0") as demo:
         gr.HTML(header())
         frame_state = gr.State(pd.DataFrame())
         registry_state = gr.State(pd.DataFrame())
@@ -325,20 +412,43 @@ def make_app():
             manual_btn=gr.Button("导入已有元数据",elem_classes="secondary")
             manual_btn.click(manual_import_ui,inputs=[frame_state,manual_files],outputs=[registry_state,candidate_summary,candidate_preview,uncertain_table,uncertain_choices])
 
-        gr.HTML("<div class='sec'><h2>3. 冻结候选池并自动编号</h2><p>边界论文确认后，程序固定候选池并生成 MAIN / HOLDOUT / RESERVE 与 P/H/R 编号。</p></div>")
+        gr.HTML("<div class='sec'><h2>3. 冻结候选池并自动编号</h2><p>先明确抽样方法和 seed，再冻结候选池。系统会同时生成可复现的抽样协议、排序记录和逐样本凭证。</p></div>")
         with gr.Group(elem_classes="card"):
-            with gr.Row(): seed=gr.Textbox("law_sampling_v1",label="抽样协议/seed"); width=gr.Number(3,label="编号位数",precision=0)
+            method_choice=gr.Radio(
+                [METHOD_LABELS[METHOD_HASH_ISSUE_BALANCED], METHOD_LABELS[METHOD_HASH_SIMPLE]],
+                value=METHOD_LABELS[METHOD_HASH_ISSUE_BALANCED],
+                label="抽样方法"
+            )
+            method_help=gr.HTML(sampling_method_help(METHOD_LABELS[METHOD_HASH_ISSUE_BALANCED]))
+            with gr.Row():
+                seed=gr.Textbox("law_sampling_v1",label="抽样 seed",info="相同候选池 + 相同方法 + 相同 seed，应得到相同抽样结果")
+                width=gr.Number(3,label="编号位数",precision=0)
             sample_btn=gr.Button("冻结并抽样",variant="primary",elem_classes="primary")
+        method_choice.change(sampling_method_help,inputs=[method_choice],outputs=[method_help],queue=False)
         sample_summary=gr.HTML()
         with gr.Tabs():
             with gr.Tab("已选样本"): selected=gr.Dataframe(interactive=False,wrap=True)
+            with gr.Tab("抽样凭证"):
+                protocol_view=gr.HTML("<div class='note'>完成抽样后，这里会显示复现凭证。</div>")
+                certificate_view=gr.Dataframe(label="逐样本抽样凭证",interactive=False,wrap=True)
+                with gr.Row():
+                    protocol_file=gr.File(label="sampling_protocol.json")
+                    certificate_file=gr.File(label="sampling_certificate.csv")
+                    ranking_file=gr.File(label="sampling_ranking_full.csv")
             with gr.Tab("下载任务"):
                 downloads=gr.Dataframe(interactive=False,wrap=True)
                 link_list=gr.HTML("<div class='note'>抽样后这里会生成 CNKI 页面链接。</div>")
             with gr.Tab("证据任务"): evidence=gr.Dataframe(interactive=False,wrap=True)
             with gr.Tab("抽样缺口"): issues=gr.Dataframe(interactive=False,wrap=True)
         result_zip=gr.File(label="完整结果包")
-        sample_btn.click(run_sample,inputs=[frame_state,registry_state,seed,width],outputs=[primary_state,sample_summary,selected,downloads,link_list,evidence,issues,result_zip])
+        sample_btn.click(
+            run_sample,
+            inputs=[frame_state,registry_state,method_choice,seed,width],
+            outputs=[
+                primary_state,sample_summary,selected,downloads,link_list,evidence,issues,result_zip,
+                protocol_view,certificate_view,protocol_file,certificate_file,ranking_file
+            ]
+        )
 
         gr.HTML("<div class='sec'><h2>4. 获取入选样本 PDF</h2><p>先尝试使用已登录的 CNKI 浏览器自动下载；无法自动取得的样本继续保留网页链接，由采集同学手动下载。</p></div>")
         with gr.Group(elem_classes="card"):
