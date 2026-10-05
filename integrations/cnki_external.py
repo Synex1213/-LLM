@@ -205,13 +205,9 @@ def _stream(cmd, cwd=None):
         if _STOP_REQUESTED.is_set():
             raise CollectionStopped("用户结束了 CNKI 采集")
         if code != 0:
-            tail = "
-".join(lines[-40:])
+            tail = "\n".join(lines[-40:])
             raise RuntimeError(
-                f"命令失败({code}): {' '.join(map(str, cmd))}" + (f"
-
-最后日志：
-{tail}" if tail else "")
+                f"命令失败({code}): {' '.join(map(str, cmd))}" + (f"\n\n最后日志：\n{tail}" if tail else "")
             )
     finally:
         with _LOCK:
