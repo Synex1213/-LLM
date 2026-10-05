@@ -2,7 +2,7 @@
 
 **法学论文抽样与自动编号助手 · v0.4.6**  
 Author: **Synex1213**
-Repository: **https://github.com/Synex1213/law-paper-sampling-assistant**
+Repository: **https://github.com/Synex1213/-LLM**
 
 这是一个面向法学论文 T2 Benchmark / LLM 学术评价实验的数据采样工具。它把“研究范围设计 → CNKI 候选题录采集 → Article Eligibility → 可复现抽样 → 自动编号 → PDF 获取/人工链接兜底”串成一条可审计工作流。
 
