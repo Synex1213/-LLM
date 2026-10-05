@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  syntax-and-core-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install core test dependency
+        run: python -m pip install --upgrade pip pandas
+      - name: Compile Python sources
+        run: python -m compileall -q app.py integrations sampling_core
+      - name: Run deterministic sampling smoke test
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from sampling_core import (
+              load_registry, build_frame, attach_frame, read_candidates,
+              load_rules, classify, sample, METHOD_HASH_ISSUE_BALANCED,
+          )
+
+          registry = load_registry(Path("config/journal_registry.json"))
+          rules = load_rules(Path("config/eligibility_rules.json"))
+          frame = build_frame(
+              registry,
+              [{"id": "P1", "start_year": 2018, "end_year": 2020}],
+              ["T1"],
+              ["法学研究"],
+              1,
+              1,
+              False,
+              2024,
+              2025,
+              1,
+          )
+          candidates = read_candidates(["demo/demo_candidates_SYNTHETIC.csv"])
+          classified = classify(attach_frame(candidates, frame), rules)
+          classified.loc[
+              classified["eligibility_status"].eq("UNCERTAIN"), "decision"
+          ] = "exclude"
+          primary, reserve, issues, audit = sample(
+              classified,
+              frame,
+              seed="ci_smoke",
+              method=METHOD_HASH_ISSUE_BALANCED,
+              width=3,
+          )
+          assert len(primary) == 1
+          assert len(reserve) == 1
+          assert primary.iloc[0]["paper_id"] == "P001"
+          assert reserve.iloc[0]["paper_id"] == "R001"
+          assert not audit.empty
+          print("CI smoke test passed")
+          PY

@@ -1,13 +1,36 @@
+# Python
 .venv/
+venv/
 __pycache__/
 *.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Editors / OS
 .DS_Store
 Thumbs.db
-runtime_outputs/*
-!runtime_outputs/.gitkeep
-*.pdf
+.idea/
+.vscode/
+
+# Local configuration / credentials
 .env
 .env.*
+*.cookie
+*.cookies
+
+# Runtime state and browser profiles
+runtime_outputs/*
+!runtime_outputs/.gitkeep
 .cnki-profile/
 cnki_master_profile/
 selected_pdfs/
+logs/
+*.log
+
+# Research data / copyrighted downloads
+*.pdf
+*.caj
+*.nh
+labels_vault_seed_DO_NOT_COMMIT.csv
